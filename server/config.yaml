@@ -1,0 +1,10 @@
+- configuration:
+    - server:                  
+        port: 12345
+        enable_retry: true
+        down_streams: ["www.agoda.com", "www.booking.com"]
+    - server:                  
+        port: 22222
+        enable_retry: true
+        down_streams: ["www.agoda.com", "www.booking.com"]
+        
