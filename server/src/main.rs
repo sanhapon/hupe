@@ -1,5 +1,6 @@
 mod config;
 
+use http::request;
 use hyper::server::conn::AddrStream;
 use hyper::{Body, Request, Response, Server, StatusCode};
 use hyper::service::{service_fn, make_service_fn};
@@ -21,10 +22,12 @@ fn debug_request(req: Request<Body>) -> Result<Response<Body>, Infallible>  {
     Ok(Response::new(Body::from(body_str)))
 }
 
-fn find_path(req_uri: &http::uri::Uri, config_server: ConfigServer) -> Option<String> {
+fn find_path(req_uri: &http::uri::Uri, config_server: &ConfigServer) -> Option<String> {
+    let paths = config_server.request_paths.as_ref();
     let mut found = false;
-    for (i, config) in config_server.request_paths.unwrap().iter().enumerate() {
-        let str = config.path.unwrap().as_str();
+
+    for (i, request_path) in paths.unwrap().iter().enumerate() {
+        let str = request_path.path.as_deref().unwrap();
         if req_uri.path().starts_with(str) {
             return Some(String::from(str));
         }
@@ -32,7 +35,7 @@ fn find_path(req_uri: &http::uri::Uri, config_server: ConfigServer) -> Option<St
     None
 }
 
-async fn handle(client_ip: IpAddr, req: Request<Body>, config_server: ConfigServer) -> Result<Response<Body>, Infallible> {
+async fn handle(client_ip: IpAddr, req: Request<Body>, config_server: &ConfigServer) -> Result<Response<Body>, Infallible> {
     match find_path(req.uri(), config_server) {
         Some(path) => {
             match hyper_reverse_proxy::call(client_ip, "http://127.0.0.1:13901", req).await {
@@ -57,8 +60,9 @@ async fn main() {
     let make_svc = make_service_fn(|conn: &AddrStream| {
         let server = config.servers[0].clone();
         let remote_addr = conn.remote_addr().ip();
+
         async move {
-            Ok::<_, Infallible>(service_fn(move |req| handle(remote_addr, req, server)))
+            Ok::<_, Infallible>(service_fn(move |req| handle(remote_addr, req, &server)))
         }
     });
 
