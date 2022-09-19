@@ -1,10 +1,21 @@
-- configuration:
-    - server:                  
-        port: 12345
-        enable_retry: true
-        down_streams: ["www.agoda.com", "www.booking.com"]
-    - server:                  
-        port: 22222
-        enable_retry: true
-        down_streams: ["www.agoda.com", "www.booking.com"]
-        
+configuration:
+- listening_port: 22222
+  enable_retry: true
+  down_streams:
+      - www.agoda.com
+      - www.booking.com
+  request_paths:
+      - path: /hotels
+        map_to: /
+      - path: /hotels
+        map_to: /
+- listening_port: 33333
+  enable_retry: true
+  down_streams:
+      - www.agoda.com
+      - www.booking.com
+  request_paths:
+      - path: /hotels
+        map_to: /
+      - path: /hotels
+        map_to: /
