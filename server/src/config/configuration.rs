@@ -4,7 +4,7 @@ use std::{fs};
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Configuration {
     #[serde(rename = "configuration")]
-    pub servers: Vec<Server>,
+    pub server: Server,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -55,10 +55,8 @@ impl Configuration {
             request_paths: Some(vec![rp1, rp2])
         };
 
-        let s2 = s1.clone();
-
         let c = Configuration {
-            servers: vec![s1, s2]
+            server: s1
         };
 
         let str = serde_yaml::to_string(&c).unwrap();

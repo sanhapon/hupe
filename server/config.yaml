@@ -1,21 +1,11 @@
 configuration:
-- listening_port: 22222
+  listening_port: 22222
   enable_retry: true
   down_streams:
-      - www.agoda.com
-      - www.booking.com
+      - www.example.com
+      - localhost:3030
   request_paths:
       - path: /hotels
         map_to: /
-      - path: /hotels
-        map_to: /
-- listening_port: 33333
-  enable_retry: true
-  down_streams:
-      - www.agoda.com
-      - www.booking.com
-  request_paths:
-      - path: /hotels
-        map_to: /
-      - path: /hotels
-        map_to: /
+      - path: /another
+        map_to: /another
