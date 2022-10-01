@@ -1,24 +1,30 @@
-use hyper::{Request, Response, Body, Error, Client};
+use std::sync::Arc;
+
+use hyper::{Request, Response, Body, Error, Client, client::HttpConnector};
 use hyper_tls::HttpsConnector;
 
+#[derive(Debug, Clone)]
 pub struct Connector {
-
+    down_streams: Vec<String>,
+    client: Client<HttpsConnector<hyper::client::HttpConnector>>,
 }
 
 impl Connector {
-    pub fn new() -> Connector {
-        Connector {}
-    }
-
-    pub async fn call(&self, mut req: Request<Body>, host: String) -> Result<Response<Body>, Error> {
+    pub fn new(down_streams: Vec<String>) -> Connector {
         let https = HttpsConnector::new();
         let client: Client<HttpsConnector<_>, _> = Client::builder().build(https);
         
-        req.strip_headers();
-        req.change_to_downstream_host(host);
+        Connector { down_streams, client }
+    }
 
-        let resp = client.request(req);
-        resp.await
+    pub async fn call(&self, mut req: Request<Body>, counter: i32) -> Result<Response<Body>, Error> {
+
+        let host = &self.down_streams[counter as usize];
+        req.strip_headers();
+        req.change_to_downstream_host(host.to_string());
+
+        println!("{}", req.uri());
+        self.client.request(req).await
     }
 }
 
@@ -38,8 +44,8 @@ impl RequestFn for Request<Body> {
     fn change_to_downstream_host(&mut self, host: String) {
         let uri = self.uri();
         let url_string = match uri.query() {
-            None => format!("{}{}", host, uri.path()),
-            Some(query) => format!("{}{}?{}", host, uri.path(), query)
+            None => format!("https://{}{}", host, uri.path()),
+            Some(query) => format!("https://{}{}?{}", host, uri.path(), query)
         };
 
         *self.uri_mut() = url_string.parse().unwrap();

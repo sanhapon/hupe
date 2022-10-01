@@ -1,11 +1,15 @@
 configuration:
   listening_port: 22222
   enable_retry: true
+  file_root_path: ./
   down_streams:
       - www.example.com
-      - localhost:3030
+      - www.agoda.com
   request_paths:
-      - path: /hotels
+      - request_path: /hotels
         map_to: /
-      - path: /another
+      - request_path: /another
         map_to: /another
+  request_files:
+      - request_path: /js/$uri
+        map_to: js/$uri

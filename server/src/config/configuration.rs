@@ -19,12 +19,12 @@ pub struct Server {
     pub down_streams: Option<Vec<String>>,
 
     #[serde(rename = "request_paths")]
-    pub request_paths: Option<Vec<RequestPath>>,
+    pub request_paths: Option<Vec<RequestPaths>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct RequestPath {
-    #[serde(rename = "path")]
+pub struct RequestPaths {
+    #[serde(rename = "request_path")]
     pub path: Option<String>,
 
     #[serde(rename = "map_to")]
@@ -40,11 +40,11 @@ impl Configuration {
     }
 
     pub fn save_config() {
-        let rp1 = RequestPath {
+        let rp1 = RequestPaths {
             path: Some("/hotels".to_string()),
             map_to: Some("/".to_string())
         };
-        let rp2 = RequestPath {
+        let rp2 = RequestPaths {
             path: Some("/hotels".to_string()),
             map_to: Some("/".to_string())
         };
