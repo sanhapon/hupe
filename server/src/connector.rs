@@ -1,11 +1,9 @@
-use std::sync::Arc;
-
-use hyper::{Request, Response, Body, Error, Client, client::HttpConnector};
+use hyper::{Request, Response, Body, Error, Client};
 use hyper_tls::HttpsConnector;
 
 #[derive(Debug, Clone)]
 pub struct Connector {
-    down_streams: Vec<String>,
+    pub down_streams: Vec<String>,
     client: Client<HttpsConnector<hyper::client::HttpConnector>>,
 }
 
@@ -18,12 +16,9 @@ impl Connector {
     }
 
     pub async fn call(&self, mut req: Request<Body>, counter: i32) -> Result<Response<Body>, Error> {
-
         let host = &self.down_streams[counter as usize];
         req.strip_headers();
         req.change_to_downstream_host(host.to_string());
-
-        println!("{}", req.uri());
         self.client.request(req).await
     }
 }
