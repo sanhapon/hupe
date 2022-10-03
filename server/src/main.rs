@@ -9,24 +9,30 @@ mod connector;
 mod config;
 
 
+const MAX_REQ : usize = 18_446_744_073_709_551_000usize;
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     let configuration = config::configuration::Configuration::get_config().unwrap();
-    let connector = Arc::new(connector::Connector::new(configuration.server.down_streams.unwrap()));
+    let port = configuration.server.port.unwrap();
 
-    let number = Arc::new(Mutex::new(0 as i32));
+    println!("{:?}", configuration);
+
+    let connector = Arc::new(connector::Connector::new(configuration));
+
+    let number = Arc::new(Mutex::new(0usize));
 
     let make_service = make_service_fn(move |_con| {
         let connector = connector.clone();
         let mut number = number.lock().unwrap();
-        *number += 1;
-        
 
-        if *number >= connector.down_streams.len() as i32 {
+        *number += 1;
+        if *number > MAX_REQ {
             *number = 0;
-        }   
-        let mut index = *number;
+        }
+        
+        let index = *number;
         
         async move {
             Ok::<_, Error>(service_fn(move |req| {
@@ -40,7 +46,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         
     });
 
-    let addr = SocketAddr::from(([0,0,0,0], 12345));
-    Server::bind(&addr).serve(make_service).await.unwrap();
+    let addr = SocketAddr::from(([0,0,0,0], port));
+    Server::bind(&addr)
+    .tcp_keepalive(None)
+    .serve(make_service).await.unwrap();
     Ok(())
 }
