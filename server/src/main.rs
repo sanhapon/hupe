@@ -48,7 +48,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     let addr = SocketAddr::from(([0,0,0,0], port));
     Server::bind(&addr)
-    .tcp_keepalive(None)
-    .serve(make_service).await.unwrap();
+        .tcp_keepalive(None)
+        .http1_keepalive(false)
+        .http2_keep_alive_interval(None)
+        .serve(make_service).await.unwrap();
     Ok(())
 }

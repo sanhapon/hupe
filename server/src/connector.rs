@@ -13,7 +13,7 @@ struct RequestMatcher {
 
 impl RequestMatcher {
     fn new(regex_pattern: &str, servers: Vec<String>) -> RequestMatcher {
-        println!("New RequestMacher");
+        println!("New RequestMacher {} {:?}", regex_pattern, servers);
         RequestMatcher {
             config_path_regex: Regex::new(regex_pattern).unwrap(),
             downstream_servers: servers
@@ -29,7 +29,6 @@ pub struct Connector {
 
 impl Connector {
     pub fn new(configuration: Configuration) -> Connector {
-        println!("New Connector");
         let https = HttpsConnector::new();
         let client: Client<HttpsConnector<_>, _> = Client::builder()
         .http2_keep_alive_interval(None)
@@ -68,7 +67,6 @@ impl Connector {
                 self.client.request(req).await
             }, 
             _ => {
-                println!("not match");
                 let mut resp = Response::new(Body::from(""));
                 *resp.status_mut() = http::status::StatusCode::NOT_FOUND;
                 Ok::<_, Error>(resp)
@@ -103,7 +101,6 @@ impl RequestFn for Request<Body> {
             Some(query) => format!("https://{}{}?{}", host, uri.path(), query)
         };
 
-        println!("{url_string}");
         *self.uri_mut() = url_string.parse().unwrap();
     }
 }
