@@ -1,4 +1,6 @@
-use hyper::{Request, Response, Body, Error, Client};
+use std::{convert::Infallible, borrow::Borrow};
+
+use hyper::{Request, Response, Body, Client};
 use hyper_tls::HttpsConnector;
 use regex::Regex;
 
@@ -47,7 +49,7 @@ impl Connector {
         Connector { client, request_matchers }
     }
 
-    pub async fn call(&self, mut req: Request<Body>, counter: usize) -> Result<Response<Body>, Error> {
+    pub async fn call(&self, mut req: Request<Body>, mut counter: usize) -> Result<Response<Body>, hyper::Error> {
     
         let matcher = 
             self.request_matchers
@@ -56,20 +58,44 @@ impl Connector {
         
 
         match matcher {
-            Some(m) => {
-                req.strip_headers();
+            Some( m) => {
+
                 let servers = &m.downstream_servers;
-                
                 let index =  counter % servers.len();
                 let host = &servers[index];
                 req.change_to_downstream_host(host.to_string());
-        
-                self.client.request(req).await
+                req.strip_headers();
+
+
+                let headers = req.headers().clone();
+                let version = req.version();
+                let method = req.method().clone();
+                let bytes = hyper::body::to_bytes(req.into_body()).await.unwrap();
+
+                loop {
+                    let body = hyper::body::Body::from(bytes.clone());
+                    let mut req2 = Request::new(body);
+                    *req2.headers_mut() = headers.clone();
+                    *req2.version_mut() = version;
+                    *req2.method_mut()= method.clone();
+             
+                    let index =  counter % servers.len();
+                    println!("index: {index}");
+                    let host = &servers[index];
+                    req2.change_to_downstream_host(host.to_string());
+                    let x = self.client.request(req2).await;
+                    if x.is_err() {
+                        counter +=1;
+                        continue;
+                    }
+                    
+                    return x;
+                }
             }, 
             _ => {
                 let mut resp = Response::new(Body::from(""));
                 *resp.status_mut() = http::status::StatusCode::NOT_FOUND;
-                Ok::<_, Error>(resp)
+                Ok::<_, hyper::Error>(resp)
             }
         }
 
