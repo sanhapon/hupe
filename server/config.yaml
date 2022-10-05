@@ -9,7 +9,7 @@ configuration:
   request_paths: 
     - down_streams: 
         - www.example.com
-        - www.agoda.com
+        - www.toon.com
         - www.healthcare.com
       map_to: /
       uri_path: /
