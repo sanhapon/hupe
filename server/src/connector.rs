@@ -1,7 +1,7 @@
-use hyper::{Request, Response, Body, Error, Client};
+use http::{HeaderMap, Method, Version};
+use hyper::{Request, Response, Body, Client, body::Bytes, client::ResponseFuture};
 use hyper_tls::HttpsConnector;
 use regex::Regex;
-
 
 use crate::config::configuration::{Configuration};
 
@@ -29,7 +29,6 @@ pub struct Connector {
 
 impl Connector {
     pub fn new(configuration: Configuration) -> Connector {
-        println!("New Connector");
         let https = HttpsConnector::new();
         let client: Client<HttpsConnector<_>, _> = Client::builder()
         .http2_keep_alive_interval(None)
@@ -48,7 +47,7 @@ impl Connector {
         Connector { client, request_matchers }
     }
 
-    pub async fn call(&self, mut req: Request<Body>, counter: usize) -> Result<Response<Body>, Error> {
+    pub async fn call(&self, mut req: Request<Body>, mut counter: usize, enable_retry: bool) -> Result<Response<Body>, hyper::Error> {
     
         let matcher = 
             self.request_matchers
@@ -57,26 +56,65 @@ impl Connector {
         
 
         match matcher {
-            Some(m) => {
-                req.strip_headers();
+            Some( m) => {
+
                 let servers = &m.downstream_servers;
-                
                 let index =  counter % servers.len();
                 let host = &servers[index];
                 req.change_to_downstream_host(host.to_string());
-        
-                self.client.request(req).await
+                req.strip_headers();
+
+                if !enable_retry {
+                    match self.client.request(req).await {
+                        Ok(r) => Ok(r),
+                        Err(e) => {
+                            let mut resp = Response::new(Body::from("Bad Gateway Error"));
+                            *resp.status_mut() = http::status::StatusCode::BAD_GATEWAY;
+                            Ok::<_, hyper::Error>(resp)
+                        }
+                    }
+                }
+                else {
+                    let headers = req.headers().clone();
+                    let method = req.method().clone();
+                    let version = req.version();
+                    let bytes = hyper::body::to_bytes(req.into_body()).await.unwrap();
+
+                    loop {
+                        
+                        let result= self.send_request(bytes.clone(), headers.clone(), version, method.clone(), counter, servers).await;
+
+                        if result.is_err() {
+                            counter +=1;
+                            continue;
+                        }
+                        
+                        return result;
+                    }
+                }
             }, 
             _ => {
-                println!("not match");
                 let mut resp = Response::new(Body::from(""));
                 *resp.status_mut() = http::status::StatusCode::NOT_FOUND;
-                Ok::<_, Error>(resp)
+                Ok::<_, hyper::Error>(resp)
             }
         }
 
     }
 
+    fn send_request(&self, bytes: Bytes, headers: HeaderMap, version: Version, method: Method, counter: usize, servers: &Vec<String>) -> ResponseFuture {
+        let body = hyper::body::Body::from(bytes);
+        let mut req2 = Request::new(body);
+        *req2.headers_mut() = headers;
+        *req2.version_mut() = version;
+        *req2.method_mut()= method;
+ 
+        let index =  counter % servers.len();
+        let host = &servers[index];
+        req2.change_to_downstream_host(host.to_string());
+
+        self.client.request(req2)
+    }
 
     fn mark_down_stream_broken(server_name: String) {
 
@@ -103,7 +141,6 @@ impl RequestFn for Request<Body> {
             Some(query) => format!("https://{}{}?{}", host, uri.path(), query)
         };
 
-        println!("{url_string}");
         *self.uri_mut() = url_string.parse().unwrap();
     }
 }

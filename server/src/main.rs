@@ -25,21 +25,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     let make_service = make_service_fn(move |_con| {
         let connector = connector.clone();
-        let mut number = number.lock().unwrap();
+        let number = number.clone();
 
-        *number += 1;
-        if *number > MAX_REQ {
-            *number = 0;
-        }
-        
-        let index = *number;
-        
         async move {
             Ok::<_, Error>(service_fn(move |req| {
+                let mut number = number.lock().unwrap();
+                *number += 1;
+                if *number > MAX_REQ {
+                    *number = 0;
+                }
+                
+                let index = *number;
+        
                 let connector = connector.clone();
 
                 async move {
-                    connector.call(req, index).await
+                    connector.call(req, index, false).await
                 }
             }))
         }
@@ -48,7 +49,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     let addr = SocketAddr::from(([0,0,0,0], port));
     Server::bind(&addr)
-    .tcp_keepalive(None)
-    .serve(make_service).await.unwrap();
+        // .tcp_keepalive(None)
+        // .http1_keepalive(false)
+        // .http2_keep_alive_interval(None)
+        .serve(make_service).await.unwrap();
     Ok(())
 }
