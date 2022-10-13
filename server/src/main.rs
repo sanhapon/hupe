@@ -8,7 +8,6 @@ use hyper::service::{make_service_fn, service_fn};
 mod connector;
 mod config;
 
-
 const MAX_REQ : usize = 18_446_744_073_709_551_000usize;
 
 #[tokio::main]
@@ -40,7 +39,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 let connector = connector.clone();
 
                 async move {
-                    connector.call(req, index, false).await
+                    connector.call(req, index, true).await
                 }
             }))
         }

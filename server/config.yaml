@@ -12,9 +12,9 @@ configuration:
         - www.toon.com
         - www.healthcare.com
       map_to: /
-      uri_path: /
+      uri_path: /$
     - down_streams: 
         - www.smartertravel.com
         - www.booking.com
       map_to: /another
-      uri_path: /another
+      uri_path: /another*
