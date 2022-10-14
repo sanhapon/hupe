@@ -10,7 +10,7 @@ mod config;
 
 const MAX_REQ : usize = 18_446_744_073_709_551_000usize;
 
-#[tokio::main]
+#[tokio::main()]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     let configuration = config::configuration::Configuration::get_config().unwrap();
@@ -34,6 +34,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     *number = 0;
                 }
                 
+                // println!("counter {}", number);
                 let index = *number;
         
                 let connector = connector.clone();
@@ -45,11 +46,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         }
     });
 
-    let addr = SocketAddr::from(([0,0,0,0], port));
+    let addr = SocketAddr::from(([127,0,0,1], port));
     Server::bind(&addr)
-        .tcp_keepalive(None)
-        .http1_keepalive(false)
-        .http2_keep_alive_interval(None)
+        // .tcp_keepalive(None)
+        // .http1_keepalive(false)
+        // .http2_keep_alive_interval(None)
         .serve(make_service).await.unwrap();
     Ok(())
 }

@@ -5,9 +5,9 @@ configuration:
   listening_port: 22222
   request_files: 
     - uri_path: /js/*
-      map_to: /js
+      map_to: ./assets/js
     - uri_path: /css/*
-      map_to: /css
+      map_to: ./assets/css
   request_paths: 
     - down_streams: 
         - www.example.com
