@@ -7,7 +7,7 @@ pub fn strip_headers(req: &mut Request<Body>) {
     }
 }
 
-pub fn change_to_downstream_host(req: &mut Request<Body>, host: String) {
+pub fn change_to_downstream_host(req: &mut Request<Body>, host: &String) {
     let uri = req.uri();
     let url_string = match uri.query() {
         None => format!("https://{}{}", host, uri.path()),
