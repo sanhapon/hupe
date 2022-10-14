@@ -4,12 +4,14 @@ configuration:
   file_root_path: ./
   listening_port: 22222
   request_files: 
-    - map_to: js/$uri
-      request_path: /js/$uri
+    - uri_path: /js/*
+      map_to: /js
+    - uri_path: /css/*
+      map_to: /css
   request_paths: 
     - down_streams: 
         - www.example.com
-        - www.toon.com
+        - localhost:12345
         - www.healthcare.com
       map_to: /
       uri_path: /$
