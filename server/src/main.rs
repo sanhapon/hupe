@@ -39,7 +39,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 let connector = connector.clone();
 
                 async move {
-                    connector.call(req, index, true).await
+                    connector.call(req, index).await
                 }
             }))
         }
@@ -48,9 +48,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     let addr = SocketAddr::from(([0,0,0,0], port));
     Server::bind(&addr)
-        // .tcp_keepalive(None)
-        // .http1_keepalive(false)
-        // .http2_keep_alive_interval(None)
+        .tcp_keepalive(None)
+        .http1_keepalive(false)
+        .http2_keep_alive_interval(None)
         .serve(make_service).await.unwrap();
     Ok(())
 }

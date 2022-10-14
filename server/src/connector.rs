@@ -1,5 +1,5 @@
 use http::{HeaderMap, Method, Version};
-use hyper::{Request, Response, Body, Client, body::Bytes, client::ResponseFuture};
+use hyper::{Request, Response, Body, Client, body::Bytes};
 use hyper_tls::HttpsConnector;
 
 mod request_modifier;
@@ -10,6 +10,7 @@ use crate::config::configuration::{Configuration};
 
 #[derive(Debug, Clone)]
 pub struct Connector {
+    enable_retry: bool,
     request_matchers: Vec<RequestMatcher>,
     client: Client<HttpsConnector<hyper::client::HttpConnector>>,
 }
@@ -31,19 +32,18 @@ impl Connector {
                 rm
             }).collect();
             
-        Connector { client, request_matchers }
+        Connector { enable_retry: configuration.server.enable_retry.unwrap(), client, request_matchers }
     }
 
-    pub async fn call(&self, req: Request<Body>, counter: usize, enable_retry: bool) -> Result<Response<Body>, hyper::Error> {
+    pub async fn call(&self, req: Request<Body>, counter: usize) -> Result<Response<Body>, hyper::Error> {
         let matcher = 
                     self.request_matchers
                     .iter()
                     .find(|r| r.is_match(req.uri().path()));
         
         match matcher {
-            Some( m) => {
-    
-                self.request_downstream(enable_retry, counter, req, m).await
+            Some(m) => {
+                self.request_downstream(counter, req, m.clone()).await
             }, 
             _ => {
                 let mut resp = Response::new(Body::from(""));
@@ -53,13 +53,13 @@ impl Connector {
         }
     }
 
-    async fn request_downstream(&self, enable_retry: bool, mut counter: usize, mut req: Request<Body>, request_matcher: &RequestMatcher) -> Result<Response<Body>, hyper::Error> {
-        let server = &request_matcher.get_downstream_server(counter);
+    async fn request_downstream(&self, mut counter: usize, mut req: Request<Body>, mut request_matcher: RequestMatcher) -> Result<Response<Body>, hyper::Error> {
+        if !self.enable_retry {
+            let server = &mut request_matcher.get_downstream_server(counter);
 
-        request_modifier::change_to_downstream_host(&mut req, server);
-        request_modifier::strip_headers(&mut req);
+            request_modifier::change_to_downstream_host(&mut req, server);
+            request_modifier::strip_headers(&mut req);
 
-        if !enable_retry {
             match self.client.request(req).await {
                 Ok(r) => Ok(r),
                 Err(_e) => {
@@ -73,30 +73,38 @@ impl Connector {
             let headers = req.headers().clone();
             let method = req.method().clone();
             let version = req.version();
-            let bytes = hyper::body::to_bytes(req.into_body()).await.unwrap();
 
+            let bytes = hyper::body::to_bytes(req.into_body()).await.unwrap();
             loop {
-                
-                let result= self.send_request(bytes.clone(), headers.clone(), version, method.clone(), server).await;
-                if result.is_err() {
-                    counter +=1;
-                    continue;
+                let server = &mut request_matcher.get_downstream_server(counter);
+
+                println!("{} - {}", counter, server);
+
+                let req= self.build_request(bytes.clone(), headers.clone(), version, method.clone(), server);
+                                
+                let result = self.client.request(req).await;
+                if !result.is_err() {
+                    return result;
+                } else {
+                    println!("error {}", result.err().unwrap().message());
                 }
-                
-                return result;
+
+                request_matcher.remove_downstream_server(counter);
+                counter = counter + 1;
             }
+
         }
     } 
 
-    fn send_request(&self, bytes: Bytes, headers: HeaderMap, version: Version, method: Method, server: &String) -> ResponseFuture {
+    fn build_request(&self, bytes: Bytes, headers: HeaderMap, version: Version, method: Method, server: &String) -> Request<Body> {
         let body = hyper::body::Body::from(bytes);
-        let mut req2 = Request::new(body);
-        *req2.headers_mut() = headers;
-        *req2.version_mut() = version;
-        *req2.method_mut()= method;
+        let mut req = Request::new(body);
+        *req.headers_mut() = headers;
+        *req.version_mut() = version;
+        *req.method_mut()= method;
  
-        request_modifier::change_to_downstream_host(&mut req2, server);
-
-        self.client.request(req2)
+        request_modifier::change_to_downstream_host(&mut req, server);
+        request_modifier::strip_headers(&mut req);
+        req
     }
 }
