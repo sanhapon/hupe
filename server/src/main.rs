@@ -8,10 +8,9 @@ use hyper::service::{make_service_fn, service_fn};
 mod connector;
 mod config;
 
-
 const MAX_REQ : usize = 18_446_744_073_709_551_000usize;
 
-#[tokio::main]
+#[tokio::main()]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     let configuration = config::configuration::Configuration::get_config().unwrap();
@@ -35,19 +34,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     *number = 0;
                 }
                 
+                // println!("counter {}", number);
                 let index = *number;
         
                 let connector = connector.clone();
 
                 async move {
-                    connector.call(req, index, false).await
+                    connector.call(req, index).await
                 }
             }))
         }
-        
     });
 
-    let addr = SocketAddr::from(([0,0,0,0], port));
+    let addr = SocketAddr::from(([127,0,0,1], port));
     Server::bind(&addr)
         // .tcp_keepalive(None)
         // .http1_keepalive(false)

@@ -22,7 +22,10 @@ pub struct Server {
     pub file_root_path: Option<String>,
 
     #[serde(rename = "request_files")]
-    pub request_files: Option<Vec<RequestPath>>
+    pub request_files: Option<Vec<RequestPath>>,
+
+    #[serde(rename = "brotli_compress")]
+    pub brotli_compress: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

@@ -1,30 +1,21 @@
-use http::{HeaderMap, Method, Version};
-use hyper::{Request, Response, Body, Client, body::Bytes, client::ResponseFuture};
+use http::{HeaderMap, Method, Version, HeaderValue};
+use hyper::{Request, Response, Body, Client, body::Bytes};
 use hyper_tls::HttpsConnector;
-use regex::Regex;
 
+mod request_modifier;
+mod request_matcher;
+mod file_matcher;
+
+use request_matcher::RequestMatcher;
+use file_matcher::FileMatcher;
 use crate::config::configuration::{Configuration};
 
 #[derive(Debug, Clone)]
-struct RequestMatcher {
-    config_path_regex: Regex,
-    downstream_servers: Vec<String>,
-}
-
-impl RequestMatcher {
-    fn new(regex_pattern: &str, servers: Vec<String>) -> RequestMatcher {
-        println!("New RequestMacher {} {:?}", regex_pattern, servers);
-        RequestMatcher {
-            config_path_regex: Regex::new(regex_pattern).unwrap(),
-            downstream_servers: servers
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
 pub struct Connector {
+    enable_retry: bool,
     request_matchers: Vec<RequestMatcher>,
     client: Client<HttpsConnector<hyper::client::HttpConnector>>,
+    file_matchers: Vec<FileMatcher>,
 }
 
 impl Connector {
@@ -34,114 +25,125 @@ impl Connector {
         .http2_keep_alive_interval(None)
         .build(https);
         
-        let request_matchers: Vec<RequestMatcher> = configuration.server.request_paths
-            .unwrap()
-            .iter()
+        let request_matchers: Vec<RequestMatcher> = configuration.server.request_paths.unwrap().iter()
             .map(|rp| {
                 let regex_pattern = rp.uri_path.as_ref().unwrap().as_str();
                 let servers = rp.downstreams.as_ref().unwrap().clone();
                 let rm = RequestMatcher::new(regex_pattern, servers);
                 rm
             }).collect();
+
+        let file_matchers: Vec<FileMatcher> = configuration.server.request_files.unwrap().iter()
+            .map(|rp| {
+                let regex_pattern = rp.uri_path.as_ref().unwrap().as_str();
+                let file_path = rp.map_to.as_ref().unwrap();
+                FileMatcher::new(regex_pattern, file_path.to_string())
+            }).collect();
+        
             
-        Connector { client, request_matchers }
+        Connector { enable_retry: configuration.server.enable_retry.unwrap(), client, request_matchers, file_matchers }
     }
 
-    pub async fn call(&self, mut req: Request<Body>, mut counter: usize, enable_retry: bool) -> Result<Response<Body>, hyper::Error> {
-    
-        let matcher = 
-            self.request_matchers
-            .iter()
-            .find(|r| r.config_path_regex.is_match(req.uri().path()));
-        
+    pub async fn call(&self, req: Request<Body>, counter: usize) -> Result<Response<Body>, hyper::Error> {
+
+        let matcher = self.file_matchers.iter()
+            .find(|r| r.is_match(req.uri().path()));
 
         match matcher {
-            Some( m) => {
-
-                let servers = &m.downstream_servers;
-                let index =  counter % servers.len();
-                let host = &servers[index];
-                req.change_to_downstream_host(host.to_string());
-                req.strip_headers();
-
-                if !enable_retry {
-                    match self.client.request(req).await {
-                        Ok(r) => Ok(r),
-                        Err(e) => {
-                            let mut resp = Response::new(Body::from("Bad Gateway Error"));
-                            *resp.status_mut() = http::status::StatusCode::BAD_GATEWAY;
-                            Ok::<_, hyper::Error>(resp)
-                        }
-                    }
+            Some(m) => {
+                let content = m.get_file(req.uri().path());
+                if content.is_none() {
+                    return self.not_found()
                 }
-                else {
-                    let headers = req.headers().clone();
-                    let method = req.method().clone();
-                    let version = req.version();
-                    let bytes = hyper::body::to_bytes(req.into_body()).await.unwrap();
 
-                    loop {
-                        
-                        let result= self.send_request(bytes.clone(), headers.clone(), version, method.clone(), counter, servers).await;
+                let mut resp = Response::new(Body::from(content.unwrap()));
+                *resp.status_mut() = http::status::StatusCode::OK;
 
-                        if result.is_err() {
-                            counter +=1;
-                            continue;
-                        }
-                        
-                        return result;
-                    }
-                }
-            }, 
-            _ => {
-                let mut resp = Response::new(Body::from(""));
-                *resp.status_mut() = http::status::StatusCode::NOT_FOUND;
+                resp.headers_mut().append("content-encoding", HeaderValue::from_str(&"br").unwrap());
+                
                 Ok::<_, hyper::Error>(resp)
+            }, 
+            None => {
+                // then check if it match downstrem path
+                self.call_downstream(req, counter).await
             }
         }
-
     }
 
-    fn send_request(&self, bytes: Bytes, headers: HeaderMap, version: Version, method: Method, counter: usize, servers: &Vec<String>) -> ResponseFuture {
-        let body = hyper::body::Body::from(bytes);
-        let mut req2 = Request::new(body);
-        *req2.headers_mut() = headers;
-        *req2.version_mut() = version;
-        *req2.method_mut()= method;
- 
-        let index =  counter % servers.len();
-        let host = &servers[index];
-        req2.change_to_downstream_host(host.to_string());
-
-        self.client.request(req2)
-    }
-
-    fn mark_down_stream_broken(server_name: String) {
-
-    }
-}
-
-trait RequestFn {
-    fn strip_headers(&mut self);
-    fn change_to_downstream_host(&mut self, host: String);
-}
-
-impl RequestFn for Request<Body> {
-    fn strip_headers(&mut self) {
-        let keys = ["host", "content-length", "transfer-encoding", "accept-encoding", "content-encoding"];
-        for key in keys {
-            self.headers_mut().remove(key);
+    async fn call_downstream(&self, req: Request<Body>, counter: usize) -> Result<Response<Body>, hyper::Error> {
+        let matcher = 
+                    self.request_matchers
+                    .iter()
+                    .find(|r| r.is_match(req.uri().path()));
+    
+        match matcher {
+            Some(m) => {
+                self.request_downstream(counter, req, m.clone()).await
+            }, 
+            _ => {
+                self.not_found()
+            }
         }
     }
 
-    fn change_to_downstream_host(&mut self, host: String) {
-        let uri = self.uri();
-        let url_string = match uri.query() {
-            None => format!("https://{}{}", host, uri.path()),
-            Some(query) => format!("https://{}{}?{}", host, uri.path(), query)
-        };
+    async fn request_downstream(&self, mut counter: usize, mut req: Request<Body>, mut request_matcher: RequestMatcher) -> Result<Response<Body>, hyper::Error> {
+        if !self.enable_retry {
+            let server = &mut request_matcher.get_downstream_server(counter);
 
-        *self.uri_mut() = url_string.parse().unwrap();
+            request_modifier::change_to_downstream_host(&mut req, server);
+            request_modifier::strip_headers(&mut req);
+
+            match self.client.request(req).await {
+                Ok(r) => Ok(r),
+                Err(_e) => {
+                    let mut resp = Response::new(Body::from("Bad Gateway Error"));
+                    *resp.status_mut() = http::status::StatusCode::BAD_GATEWAY;
+                    Ok::<_, hyper::Error>(resp)
+                }
+            }
+        }
+        else {
+            let headers = req.headers().clone();
+            let method = req.method().clone();
+            let version = req.version();
+
+            let bytes = hyper::body::to_bytes(req.into_body()).await.unwrap();
+            loop {
+                let server = &mut request_matcher.get_downstream_server(counter);
+
+                println!("{} - {}", counter, server);
+
+                let req= self.build_request(bytes.clone(), headers.clone(), version, method.clone(), server);
+                let result = self.client.request(req).await;
+
+                match result {
+                    Ok(r) => return Ok(r),
+                    Err(e) => {
+                        println!("{}", e.message());
+                        request_matcher.remove_downstream_server(counter);
+                        counter = counter + 1;
+                    }
+                }             
+            }
+
+        }
+    } 
+
+    fn build_request(&self, bytes: Bytes, headers: HeaderMap, version: Version, method: Method, server: &String) -> Request<Body> {
+        let body = hyper::body::Body::from(bytes);
+        let mut req = Request::new(body);
+        *req.headers_mut() = headers;
+        *req.version_mut() = version;
+        *req.method_mut()= method;
+ 
+        request_modifier::change_to_downstream_host(&mut req, server);
+        request_modifier::strip_headers(&mut req);
+        req
+    }
+
+    fn not_found(&self) -> Result<Response<Body>, hyper::Error> {
+        let mut resp = Response::new(Body::from(""));
+        *resp.status_mut() = http::status::StatusCode::NOT_FOUND;
+        Ok::<_, hyper::Error>(resp)
     }
 }
-

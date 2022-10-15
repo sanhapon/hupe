@@ -3,17 +3,21 @@ configuration:
   enable_retry: true
   file_root_path: ./
   listening_port: 22222
+  brotli_compress: true
   request_files: 
-    - map_to: js/$uri
-      request_path: /js/$uri
+    - uri_path: /js/*
+      map_to: ./assets/js
+    - uri_path: /css/*
+      map_to: ./assets/css
   request_paths: 
     - down_streams: 
         - www.example.com
-        - www.agoda.com
+        - localhost:12345
+        - www.healthcare.com
       map_to: /
-      uri_path: /hotels
+      uri_path: /$
     - down_streams: 
-        - www.example.com
-        - www.agoda.com
+        - www.smartertravel.com
+        - www.booking.com
       map_to: /another
-      uri_path: /another
+      uri_path: /another*
