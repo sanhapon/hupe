@@ -1,4 +1,5 @@
-use std::{str, fs::File, io::{BufReader, Read}};
+use std::{str, fs::File, io::{BufReader, Read, Write}};
+use brotlic::CompressorWriter;
 use chashmap::CHashMap;
 use regex::Regex;
 
@@ -6,7 +7,7 @@ use regex::Regex;
 pub struct FileMatcher {
     config_path_regex: Regex,
     file_path: String,
-    map: CHashMap<String, String>,
+    map: CHashMap<String, Vec<u8>>,
 }
 
 impl FileMatcher {
@@ -22,7 +23,7 @@ impl FileMatcher {
         self.config_path_regex.is_match(request_path)
     }
 
-    pub fn get_file(&self, request_path: &str) -> Option<String> {
+    pub fn get_file(&self, request_path: &str) -> Option<Vec<u8>> {
         let key = format!("{}{}", self.file_path, request_path.replace("/js", "").replace("/css", ""));
 
         if !self.map.contains_key(&key) {
@@ -32,7 +33,15 @@ impl FileMatcher {
                     let mut reader = BufReader::new(file);
                     let mut buf = Vec::new();
                     let _ = reader.read_to_end(&mut buf);
-                    self.map.insert(key.clone(), str::from_utf8(&buf).unwrap().to_string());
+
+                    let mut compressor = CompressorWriter::new(Vec::new());
+                    compressor.write_all(buf.as_slice());
+                    
+                    
+                    self.map.insert(
+                        key.clone(),
+                        compressor.into_inner().unwrap()
+                    );
                 }, 
                 Err(e) => {
                     println!("{:?}", e);
@@ -41,8 +50,9 @@ impl FileMatcher {
             }
         }
 
-        let result = self.map.get(&key).unwrap();
-        Some(result.to_string())
+        let result = self.map.get(&key).unwrap().to_vec();
+
+        Some(result)
 
     }
 }

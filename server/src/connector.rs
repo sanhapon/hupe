@@ -1,4 +1,4 @@
-use http::{HeaderMap, Method, Version};
+use http::{HeaderMap, Method, Version, HeaderValue};
 use hyper::{Request, Response, Body, Client, body::Bytes};
 use hyper_tls::HttpsConnector;
 
@@ -58,6 +58,9 @@ impl Connector {
 
                 let mut resp = Response::new(Body::from(content.unwrap()));
                 *resp.status_mut() = http::status::StatusCode::OK;
+
+                resp.headers_mut().append("content-encoding", HeaderValue::from_str(&"br").unwrap());
+                
                 Ok::<_, hyper::Error>(resp)
             }, 
             None => {
