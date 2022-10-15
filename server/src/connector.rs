@@ -1,4 +1,4 @@
-use http::{HeaderMap, Method, Version, HeaderValue};
+use http::{HeaderMap, Method, Version, HeaderValue, StatusCode};
 use hyper::{Request, Response, Body, Client, body::Bytes};
 use hyper_tls::HttpsConnector;
 
@@ -46,6 +46,7 @@ impl Connector {
 
     pub async fn call(&self, req: Request<Body>, counter: usize) -> Result<Response<Body>, hyper::Error> {
 
+        // check if request uri is looking for assets file locally
         let matcher = self.file_matchers.iter()
             .find(|r| r.is_match(req.uri().path()));
 
@@ -53,18 +54,17 @@ impl Connector {
             Some(m) => {
                 let content = m.get_file(req.uri().path());
                 if content.is_none() {
-                    return self.not_found()
+                    return self.build_response(StatusCode::NOT_FOUND, "404 Not found");
                 }
 
                 let mut resp = Response::new(Body::from(content.unwrap()));
                 *resp.status_mut() = http::status::StatusCode::OK;
-
                 resp.headers_mut().append("content-encoding", HeaderValue::from_str(&"br").unwrap());
                 
                 Ok::<_, hyper::Error>(resp)
             }, 
             None => {
-                // then check if it match downstrem path
+                // Check if match any downstream path
                 self.call_downstream(req, counter).await
             }
         }
@@ -77,12 +77,8 @@ impl Connector {
                     .find(|r| r.is_match(req.uri().path()));
     
         match matcher {
-            Some(m) => {
-                self.request_downstream(counter, req, m.clone()).await
-            }, 
-            _ => {
-                self.not_found()
-            }
+            Some(m) => self.request_downstream(counter, req, m.clone()).await,
+            _ => return self.build_response(StatusCode::NOT_FOUND, "404 Not found")
         }
     }
 
@@ -95,37 +91,28 @@ impl Connector {
 
             match self.client.request(req).await {
                 Ok(r) => Ok(r),
-                Err(_e) => {
-                    let mut resp = Response::new(Body::from("Bad Gateway Error"));
-                    *resp.status_mut() = http::status::StatusCode::BAD_GATEWAY;
-                    Ok::<_, hyper::Error>(resp)
-                }
+                Err(_e) => self.build_response(StatusCode::BAD_GATEWAY, "Bad Gateway Error")
             }
         }
         else {
             let headers = req.headers().clone();
             let method = req.method().clone();
             let version = req.version();
-
             let bytes = hyper::body::to_bytes(req.into_body()).await.unwrap();
+
             loop {
                 let server = &mut request_matcher.get_downstream_server(counter);
-
-                println!("{} - {}", counter, server);
-
                 let req= self.build_request(bytes.clone(), headers.clone(), version, method.clone(), server);
                 let result = self.client.request(req).await;
 
                 match result {
                     Ok(r) => return Ok(r),
                     Err(e) => {
-                        println!("{}", e.message());
                         request_matcher.remove_downstream_server(counter);
                         counter = counter + 1;
                     }
                 }             
             }
-
         }
     } 
 
@@ -141,9 +128,9 @@ impl Connector {
         req
     }
 
-    fn not_found(&self) -> Result<Response<Body>, hyper::Error> {
-        let mut resp = Response::new(Body::from(""));
-        *resp.status_mut() = http::status::StatusCode::NOT_FOUND;
+    fn build_response(&self, status: StatusCode, body: &str) -> Result<Response<Body>, hyper::Error> {
+        let mut resp = Response::new(Body::from(String::from(body)));
+        *resp.status_mut() = status;
         Ok::<_, hyper::Error>(resp)
     }
 }
