@@ -84,7 +84,7 @@ impl Connector {
 
     async fn request_downstream(&self, mut counter: usize, mut req: Request<Body>, mut request_matcher: RequestMatcher) -> Result<Response<Body>, hyper::Error> {
         if !self.enable_retry {
-            let server = &mut request_matcher.get_downstream_server(counter);
+            let (server, _index) = &mut request_matcher.get_downstream_server(counter);
 
             request_modifier::change_to_downstream_host(&mut req, server);
             request_modifier::strip_headers(&mut req);
@@ -101,14 +101,14 @@ impl Connector {
             let bytes = hyper::body::to_bytes(req.into_body()).await.unwrap();
 
             loop {
-                let server = &mut request_matcher.get_downstream_server(counter);
+                let (server, index) = &mut request_matcher.get_downstream_server(counter);
                 let req= self.build_request(bytes.clone(), headers.clone(), version, method.clone(), server);
                 let result = self.client.request(req).await;
 
                 match result {
                     Ok(r) => return Ok(r),
                     Err(e) => {
-                        request_matcher.remove_downstream_server(counter);
+                        request_matcher.remove_downstream_server(*index);
                         counter = counter + 1;
                     }
                 }             

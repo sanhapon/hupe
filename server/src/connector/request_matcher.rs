@@ -6,6 +6,7 @@ use regex::Regex;
 pub struct RequestMatcher {
     config_path_regex: Regex,
     downstream_servers: Arc<Mutex<Vec<String>>>,
+    
 }
 
 impl RequestMatcher {
@@ -16,13 +17,13 @@ impl RequestMatcher {
         }
     }
 
-    pub fn get_downstream_server(&self, index: usize) -> String {
+    pub fn get_downstream_server(&self, index: usize) -> (String, usize) {
 
         let index = index % self.downstream_servers.lock().unwrap().len();
         let server = &self.downstream_servers.lock().unwrap()[index];
         println!("get index {} --> {} from {:?}", index, server,  self.downstream_servers);
         
-        String::from(server) 
+        (String::from(server), index)
     }
 
     pub fn is_match(&self, request_path: &str) -> bool {
@@ -30,8 +31,7 @@ impl RequestMatcher {
     }
 
     pub fn remove_downstream_server(&mut self, index: usize) {
-        
+        println!("remove {} --> {:?}", index, self.downstream_servers.lock().unwrap()[index]);
         self.downstream_servers.lock().unwrap().remove(index);
-        println!("remove {} --> {:?}", index, self.downstream_servers);
     }
 }
