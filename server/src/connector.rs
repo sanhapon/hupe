@@ -107,7 +107,7 @@ impl Connector {
 
                 match result {
                     Ok(r) => return Ok(r),
-                    Err(e) => {
+                    Err(_e) => {
                         request_matcher.remove_downstream_server(*index);
                         counter = counter + 1;
                     }

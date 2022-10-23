@@ -1,12 +1,11 @@
-use std::sync::{Arc, Mutex};
+use std::{sync::{Arc, Mutex}, time::Duration};
 
 use regex::Regex;
 
 #[derive(Debug, Clone)]
 pub struct RequestMatcher {
     config_path_regex: Regex,
-    downstream_servers: Arc<Mutex<Vec<String>>>,
-    
+    downstream_servers: Arc<Mutex<Vec<String>>>
 }
 
 impl RequestMatcher {
@@ -18,10 +17,8 @@ impl RequestMatcher {
     }
 
     pub fn get_downstream_server(&self, index: usize) -> (String, usize) {
-
         let index = index % self.downstream_servers.lock().unwrap().len();
         let server = &self.downstream_servers.lock().unwrap()[index];
-        println!("get index {} --> {} from {:?}", index, server,  self.downstream_servers);
         
         (String::from(server), index)
     }
@@ -31,7 +28,17 @@ impl RequestMatcher {
     }
 
     pub fn remove_downstream_server(&mut self, index: usize) {
-        println!("remove {} --> {:?}", index, self.downstream_servers.lock().unwrap()[index]);
-        self.downstream_servers.lock().unwrap().remove(index);
+        let mut list = self.downstream_servers.lock().unwrap();
+        
+        let to_check_server = list.get(index).unwrap().clone();
+        list.remove(index);
+        
+        let arc = self.downstream_servers.clone();
+
+        std::thread::spawn(move ||{
+            std::thread::sleep(Duration::from_secs(30));
+            let mut list = arc.lock().unwrap();
+            list.push(to_check_server);
+        });
     }
 }

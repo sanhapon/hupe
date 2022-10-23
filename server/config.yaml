@@ -13,7 +13,7 @@ configuration:
     - down_streams: 
         - www.example.com
         - localhost:12345
-        - www.healthcare.com
+        - www.google.com
       map_to: /
       uri_path: /$
     - down_streams: 

@@ -28,15 +28,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
         async move {
             Ok::<_, Error>(service_fn(move |req| {
+                
                 let mut number = number.lock().unwrap();
                 *number += 1;
                 if *number > MAX_REQ {
                     *number = 0;
                 }
-                
-                // println!("counter {}", number);
+            
                 let index = *number;
-        
                 let connector = connector.clone();
 
                 async move {
