@@ -52,14 +52,18 @@ impl Connector {
 
         match matcher {
             Some(m) => {
-                let content = m.get_file(req.uri().path());
+                let (content, encoding) = m.get_file(req);
                 if content.is_none() {
                     return self.build_response(StatusCode::NOT_FOUND, "404 Not found");
                 }
 
                 let mut resp = Response::new(Body::from(content.unwrap()));
                 *resp.status_mut() = http::status::StatusCode::OK;
-                resp.headers_mut().append("content-encoding", HeaderValue::from_str(&"br").unwrap());
+
+                if encoding != "" {
+                    println!("set content-encoding: {}", encoding);
+                    resp.headers_mut().append("content-encoding", HeaderValue::from_str(encoding).unwrap());
+                }
                 
                 Ok::<_, hyper::Error>(resp)
             }, 
