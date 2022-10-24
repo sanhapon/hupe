@@ -43,28 +43,4 @@ impl Configuration {
         let config: Configuration = serde_yaml::from_str(&yaml)?;
         Ok(config)
     }
-
-    // pub fn save_config() {
-    //     let rp1 = RequestPaths {
-    //         path: Some("/hotels".to_string()),
-    //         map_to: Some("/".to_string())
-    //     };
-    //     let rp2 = RequestPaths {
-    //         path: Some("/hotels".to_string()),
-    //         map_to: Some("/".to_string())
-    //     };
-    //     let s1 = Server {
-    //         port: Some(12345),
-    //         enable_retry: Some(true),
-    //         down_streams: Some(vec!["www.agoda.com".to_string(), "www.booking.com".to_string()]),
-    //         request_paths: Some(vec![rp1, rp2])
-    //     };
-
-    //     let c = Configuration {
-    //         server: s1
-    //     };
-
-    //     let str = serde_yaml::to_string(&c).unwrap();
-    //     println!("{}", str);
-    // }
 }

@@ -5,6 +5,8 @@ use hyper::Server;
 use hyper::http::Error;
 use hyper::service::{make_service_fn, service_fn};
 
+use log::info;
+
 mod connector;
 mod config;
 
@@ -12,11 +14,11 @@ const MAX_REQ : usize = 18_446_744_073_709_551_000usize;
 
 #[tokio::main()]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    log4rs::init_file("../log4rs.yaml", Default::default()).unwrap();
 
     let configuration = config::configuration::Configuration::get_config().unwrap();
     let port = configuration.server.port.unwrap();
 
-    println!("{:?}", configuration);
 
     let connector = Arc::new(connector::Connector::new(configuration));
 
@@ -39,6 +41,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 let connector = connector.clone();
 
                 async move {
+                    info!(target: "requests", "{}", req.uri().path());
                     connector.call(req, index).await
                 }
             }))
@@ -47,9 +50,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     let addr = SocketAddr::from(([127,0,0,1], port));
     Server::bind(&addr)
-        .tcp_keepalive(None)
-        .http1_keepalive(false)
-        .http2_keep_alive_interval(None)
+        // .tcp_keepalive(None)
+        // .http1_keepalive(false)
+        // .http2_keep_alive_interval(None)
         .serve(make_service).await.unwrap();
     Ok(())
 }

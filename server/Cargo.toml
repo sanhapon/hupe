@@ -16,3 +16,6 @@ http = "0.2.8"
 chashmap = "2.2.2"
 brotlic = "0.8.0"
 flate2 = "1.0"
+log = "0.4.17"
+log4rs = "1.2.0"
+

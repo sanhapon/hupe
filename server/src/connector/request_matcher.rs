@@ -1,5 +1,6 @@
 use std::{sync::{Arc, Mutex}, time::Duration};
 
+use log::warn;
 use regex::Regex;
 
 #[derive(Debug, Clone)]
@@ -42,7 +43,7 @@ impl RequestMatcher {
                 list.push(to_check_server);
             });
         } else {
-            println!("Warning: cannot remove the last downstream server, at least 1 server needed.");
+            warn!("Warning: cannot remove the last downstream server, at least 1 server needed.");
         }
     }
 }

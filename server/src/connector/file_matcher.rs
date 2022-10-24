@@ -5,6 +5,7 @@ use flate2::{Compression, write::ZlibEncoder};
 use http::{Request};
 use hyper::Body;
 use regex::Regex;
+use log::warn;
 
 #[derive(Debug, Clone)]
 pub struct FileMatcher {
@@ -46,7 +47,6 @@ impl FileMatcher {
         let key = format!("{}{}", encoding, file);
 
         if !self.map.contains_key(&key) {
-            println!("new key {key}");
             match File::open(&file) {
                 Ok(file) => {
                     let mut reader = BufReader::new(file);
@@ -56,7 +56,7 @@ impl FileMatcher {
                     let data = match encoding {
                         "br" => {
                             let mut compressor = CompressorWriter::new(Vec::new());
-                            compressor.write_all(buf.as_slice());
+                            let _ = compressor.write_all(buf.as_slice());
                             compressor.into_inner().unwrap()
                         },
                         "gzip" => {
@@ -70,7 +70,7 @@ impl FileMatcher {
                     self.map.insert(key.clone(), data);              
                 }, 
                 Err(e) => {
-                    println!("warning: {:?}", e);
+                    warn!("{:?}", e);
                     return (None, String::from(""))
                 }
             }
