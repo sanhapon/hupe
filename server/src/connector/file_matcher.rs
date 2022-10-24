@@ -26,8 +26,7 @@ impl FileMatcher {
         self.config_path_regex.is_match(request_path)
     }
 
-    pub fn get_file(&self, req: Request<Body>) -> (Option<Vec<u8>>, &str) {
-        let mut response_encoding_header: &str = "";
+    pub fn get_file(&self, req: Request<Body>) -> (Option<Vec<u8>>, String) {
         let encoding = match req.headers().get("Accept-Encoding") {
             Some(v) => {
                 let mut str = v.to_str().unwrap();
@@ -47,6 +46,7 @@ impl FileMatcher {
         let key = format!("{}{}", encoding, file);
 
         if !self.map.contains_key(&key) {
+            println!("new key {key}");
             match File::open(&file) {
                 Ok(file) => {
                     let mut reader = BufReader::new(file);
@@ -70,22 +70,14 @@ impl FileMatcher {
                     self.map.insert(key.clone(), data);              
                 }, 
                 Err(e) => {
-                    println!("{:?}", e);
-                    return (None, "")
+                    println!("warning: {:?}", e);
+                    return (None, String::from(""))
                 }
             }
         }
-        
-        // To prevent error: returns a value referencing data owned by the current function
-        response_encoding_header = match encoding {
-            "br" => "br",
-            "gzip" => "gzip",
-            _ => ""
-        };
-
+    
         let result = self.map.get(&key).unwrap().to_vec();
-
-        (Some(result), response_encoding_header)
+        (Some(result), String::from(encoding))
 
     }
 

@@ -61,8 +61,7 @@ impl Connector {
                 *resp.status_mut() = http::status::StatusCode::OK;
 
                 if encoding != "" {
-                    println!("set content-encoding: {}", encoding);
-                    resp.headers_mut().append("content-encoding", HeaderValue::from_str(encoding).unwrap());
+                    resp.headers_mut().append("content-encoding", HeaderValue::from_str(encoding.as_str()).unwrap());
                 }
                 
                 Ok::<_, hyper::Error>(resp)
@@ -104,7 +103,14 @@ impl Connector {
             let version = req.version();
             let bytes = hyper::body::to_bytes(req.into_body()).await.unwrap();
 
+            let mut retry_count = 0;
+
             loop {
+                if retry_count == 2 {
+                    return self.build_response(StatusCode::BAD_GATEWAY, "Bad Gateway Error");
+                }
+
+                retry_count += 1;
                 let (server, index) = &mut request_matcher.get_downstream_server(counter);
                 let req= self.build_request(bytes.clone(), headers.clone(), version, method.clone(), server);
                 let result = self.client.request(req).await;

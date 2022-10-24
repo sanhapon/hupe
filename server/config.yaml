@@ -11,13 +11,14 @@ configuration:
       map_to: ./assets/css
   request_paths: 
     - down_streams: 
-        - www.example.com
-        - localhost:12345
-        - www.google.com
+        # - www.example.com
+        - http://localhost:12345
+        - http://localhost:33333
+        # - www.google.com
       map_to: /
       uri_path: /$
     - down_streams: 
-        - www.smartertravel.com
-        - www.booking.com
+        - https://www.smartertravel.com
+        - https://www.booking.com
       map_to: /another
       uri_path: /another*
