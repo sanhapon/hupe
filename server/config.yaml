@@ -1,20 +1,17 @@
 --- 
 configuration: 
   enable_retry: true
-  file_root_path: ./
   listening_port: 22222
   brotli_compress: true
   request_files: 
     - uri_path: /js/*
-      map_to: ./assets/js
+      map_to: /Users/sanhapon/temp/assets/js
     - uri_path: /css/*
-      map_to: ./assets/css
+      map_to: /Users/sanhapon/temp/assets/css
   request_paths: 
     - down_streams: 
-        # - www.example.com
         - http://localhost:12345
-        - http://localhost:33333
-        # - www.google.com
+        - http://localhost:12346
       map_to: /
       uri_path: /$
     - down_streams: 

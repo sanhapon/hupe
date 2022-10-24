@@ -18,9 +18,6 @@ pub struct Server {
     #[serde(rename = "request_paths")]
     pub request_paths: Option<Vec<RequestPath>>,
 
-    #[serde(rename = "file_root_path")]
-    pub file_root_path: Option<String>,
-
     #[serde(rename = "request_files")]
     pub request_files: Option<Vec<RequestPath>>,
 
