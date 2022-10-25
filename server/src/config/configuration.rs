@@ -23,6 +23,9 @@ pub struct Server {
 
     #[serde(rename = "brotli_compress")]
     pub brotli_compress: Option<bool>,
+
+    #[serde(rename = "enable_requests_log")]
+    pub enable_request_log: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

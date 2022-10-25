@@ -1,6 +1,7 @@
 --- 
 configuration: 
   enable_retry: true
+  enable_requests_log: false
   listening_port: 22222
   brotli_compress: true
   request_files: 

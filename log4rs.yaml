@@ -16,7 +16,7 @@ appenders:
     policy:
       trigger:
         kind: size
-        limit: 50kb
+        limit: 20000kb
       roller:
         kind: fixed_window
         base: 1

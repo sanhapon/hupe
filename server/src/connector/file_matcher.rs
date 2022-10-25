@@ -19,7 +19,7 @@ impl FileMatcher {
         FileMatcher {
             config_path_regex: Regex::new(regex_pattern).unwrap(),
             file_path: file_path,
-            map: CHashMap::new()
+            map: CHashMap::new(),
         }
     }
 
@@ -75,11 +75,9 @@ impl FileMatcher {
                 }
             }
         }
-    
+
         let result = self.map.get(&key).unwrap().to_vec();
         (Some(result), String::from(encoding))
 
-    }
-
-    
+    }    
 }
