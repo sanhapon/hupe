@@ -1,8 +1,8 @@
 --- 
 configuration: 
   enable_retry: true
-  enable_requests_log: false
-  listening_port: 22222
+  enable_log: true
+  listening_port: 80
   brotli_compress: true
   request_files: 
     - uri_path: /js/*
@@ -11,12 +11,12 @@ configuration:
       map_to: /Users/sanhapon/temp/assets/css
   request_paths: 
     - down_streams: 
+        - http://example.com
         - http://localhost:12345
-        - http://localhost:12346
       map_to: /
       uri_path: /$
     - down_streams: 
-        - https://www.smartertravel.com
-        - https://www.booking.com
+        - https://example.com
+        - https://localhost:12345
       map_to: /another
       uri_path: /another*

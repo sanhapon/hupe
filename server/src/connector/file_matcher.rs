@@ -7,6 +7,9 @@ use hyper::Body;
 use regex::Regex;
 use log::warn;
 
+const BR : &str = "br";
+const GZIP : &str = "gzip";
+
 #[derive(Debug, Clone)]
 pub struct FileMatcher {
     config_path_regex: Regex,
@@ -31,10 +34,10 @@ impl FileMatcher {
         let encoding = match req.headers().get("Accept-Encoding") {
             Some(v) => {
                 let mut str = v.to_str().unwrap();
-                if str.contains("br") {
-                    str = "br"
-                } else if str.contains("gzip") {
-                    str = "gzip"
+                if str.contains(BR) {
+                    str = BR
+                } else if str.contains(GZIP) {
+                    str = GZIP
                 } else {
                     str = ""
                 }
@@ -43,6 +46,7 @@ impl FileMatcher {
             _ => "",
         };
 
+        // Posibly bug to refer to /js or /css from request
         let file = format!("{}{}", self.file_path, req.uri().path().replace("/js", "").replace("/css", ""));
         let key = format!("{}{}", encoding, file);
 
@@ -54,12 +58,12 @@ impl FileMatcher {
                     let _ = reader.read_to_end(&mut buf);
 
                     let data = match encoding {
-                        "br" => {
+                        BR => {
                             let mut compressor = CompressorWriter::new(Vec::new());
                             let _ = compressor.write_all(buf.as_slice());
                             compressor.into_inner().unwrap()
                         },
-                        "gzip" => {
+                        GZIP => {
                             let mut e = ZlibEncoder::new(Vec::new(), Compression::default());
                             e.write_all(&buf[..]).unwrap();
                             e.finish().unwrap()
