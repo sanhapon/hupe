@@ -15,9 +15,7 @@ WORKDIR /usr/local/bin/hupe
 
 COPY --from=builder /usr/src/server/target/release/ .
 COPY --from=builder /usr/src/server/config.yaml .
-COPY --from=builder /usr/src/server/src/log4rs.yaml .
+COPY --from=builder /usr/src/server/log4rs.yaml .
 
-EXPOSE 80
-
-RUN chmod 777 server
+RUN chmod 755 server
 CMD ["./server"]

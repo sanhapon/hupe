@@ -18,7 +18,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let configuration = config::configuration::Configuration::get_config().unwrap();
 
     if configuration.server.enable_log.unwrap() {
-        log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
+        log4rs::init_file("./log4rs.yaml", Default::default()).unwrap();
     }
 
     let port = configuration.server.port.unwrap();
@@ -51,7 +51,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         }
     });
 
-    // let addr = SocketAddr::from(([127,0,0,1], port));
     let addr = SocketAddr::from(([0,0,0,0], port));
     Server::bind(&addr)    
         .tcp_keepalive(None)
