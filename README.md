@@ -12,8 +12,8 @@ A reverse proxy in rust which is built on top of hyper. Below are current featur
 
 # Running with docker #
 
-Mininum prequisite is config.yaml; you will need to volume configuration (config.yaml) to the container, /usr/local/bin/hupe/config.yaml.
-Optionally, we can volume static files too (based on configuration)
+Mininum prequisite is config.yaml; you will to put configuration to '/usr/local/bin/hupe/config.yaml' in the docker container.
+Optionally, we can mount static files too (based on configuration)
 
 <br />
 
