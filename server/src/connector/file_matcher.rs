@@ -46,12 +46,15 @@ impl FileMatcher {
             _ => "",
         };
 
-        // Posibly bug to refer to /js or /css from request
-        let file = format!("{}{}", self.file_path, req.uri().path().replace("/js", "").replace("/css", ""));
+
+        let re = Regex::new(r"/*(/$)").unwrap();
+        let config_path_regex = &*re.replace(self.config_path_regex.as_str(), "");
+
+        let file = format!("{}{}", self.file_path, req.uri().path().replace(config_path_regex, ""));
         let key = format!("{}{}", encoding, file);
 
         if !self.map.contains_key(&key) {
-            match File::open(&file) {
+            match File::open(file) {
                 Ok(file) => {
                     let mut reader = BufReader::new(file);
                     let mut buf = Vec::new();

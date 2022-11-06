@@ -21,9 +21,6 @@ pub struct Server {
     #[serde(rename = "request_files")]
     pub request_files: Option<Vec<RequestPath>>,
 
-    #[serde(rename = "brotli_compress")]
-    pub brotli_compress: Option<bool>,
-
     #[serde(rename = "enable_log")]
     pub enable_log: Option<bool>,
 }

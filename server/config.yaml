@@ -3,11 +3,10 @@ configuration:
   enable_retry: true
   enable_log: true
   listening_port: 80
-  brotli_compress: true
   request_files: 
-    - uri_path: /js/*
+    - uri_path: /assets/js/
       map_to: /Users/sanhapon/temp/assets/js
-    - uri_path: /css/*
+    - uri_path: /assets/css
       map_to: /Users/sanhapon/temp/assets/css
   request_paths: 
     - down_streams: 
