@@ -1,21 +1,20 @@
---- 
 configuration: 
+  listening_port: 80
   enable_retry: true
   enable_log: true
-  listening_port: 80
-  request_files: 
-    - uri_path: /js
-      map_to: /usr/local/bin/hupe/assets/js
-    - uri_path: /css
-      map_to: /usr/local/bin/hupe/assets/css
   request_paths: 
     - down_streams: 
-        - http://example.com
-        - http://localhost:12345
-      map_to: /
-      uri_path: /$
-    - down_streams: 
-        - https://example.com
-        - https://localhost:12345
+        - https://www.example.com
+        - https://api.localhost2
       map_to: /another
-      uri_path: /another*
+      uri_path: /another/*
+    - down_streams: 
+        - http://example.com
+        - http://api.localhost1
+      map_to: /
+      uri_path: /*
+  request_files: 
+    - uri_path: /assets/js
+      map_to: /usr/local/bin/hupe/assets/js
+    - uri_path: /assets/css
+      map_to: /usr/local/bin/hupe/assets/css
