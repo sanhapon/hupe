@@ -2,7 +2,7 @@
 A reverse proxy in rust which is built on top of hyper. Below are current features:
   * Multi downstreams per request path
   * Retries with next downstreams
-  * Automatically checks if down downstream is coming back
+  * Automatically checks if downstream is coming back
   * Supports https/http to downstreams
   * Caches static files (js/css).
   * Supports gzip and brotli compression based on request header for static files
